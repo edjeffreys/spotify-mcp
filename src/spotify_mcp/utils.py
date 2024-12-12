@@ -189,9 +189,6 @@ def validate(func: Callable[..., T]) -> Callable[..., T]:
             self.auth_refresh()
 
         # Handle device validation
-        if not self.is_active_device():
-            kwargs['device'] = self._get_candidate_device()
-
         return func(self, *args, **kwargs)
 
     return wrapper

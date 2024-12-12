@@ -29,7 +29,7 @@ class Client:
         """Initialize Spotify client with necessary permissions"""
         self.logger = logger
 
-        scope = "user-library-read,user-read-playback-state,user-modify-playback-state,user-read-currently-playing"
+        scope = "user-library-read,user-read-playback-state,user-modify-playback-state,user-read-currently-playing,playlist-modify-private,playlist-modify-public"
 
         try:
             self.sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
@@ -59,6 +59,14 @@ class Client:
     def recommendations(self, artists: Optional[List] = None, tracks: Optional[List] = None, limit=20):
         recs = self.sp.recommendations(seed_artists=artists, seed_tracks=tracks, limit=limit)
         return recs
+
+    def get_user_playlists(self, user: str):
+        """
+        Returns list of playlists belonging to user
+        - user: username of user
+        """
+        results = self.sp.user_playlists(user)
+        return results
 
 
     def get_info(self, item_id: str, qtype: str = 'track') -> dict:
@@ -156,6 +164,16 @@ class Client:
         - track_id: ID of track to play.
         """
         self.sp.add_to_queue(track_id, device.get('id') if device else None)
+
+    @utils.validate
+    def playlist_add_items(self, playlist_id: str, items: List[str]):
+        """
+        Adds track to playlist.
+        - playlist_id: the id of the playlist.
+        - items: a list of track URIs or URLs in the form `spotify:track:{track_id}`
+        """
+        formatted_items = list(map(lambda id: f"spotify:track:{id}", items))
+        self.sp.playlist_add_items(playlist_id, formatted_items)
 
     @utils.validate
     def get_queue(self, device=None):

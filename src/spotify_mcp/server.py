@@ -86,13 +86,23 @@ class GetInfo(ToolModel):
                                                     "If 'playlist' or 'album', returns its tracks. If 'artist',"
                                                     "returns albums and top tracks.")
 
-
 class Search(ToolModel):
     """Search for tracks, albums, artists, or playlists on Spotify."""
     query: str = Field(description="query term")
     qtype: Optional[str] = Field(default="track", description="Type of items to search for (track, album, artist, playlist, or comma-separated combination)")
     limit: Optional[int] = Field(default=10, description="Maximum number of items to return")
 
+class User(ToolModel):
+    """Search for playlists belonging to the user on Spotify.
+    - get: get a list of playlists that belong to the user"""
+    action: str = Field(description="Action to perform: 'get'.")
+    user: str = Field(description="Username of user")
+
+class Playlist(ToolModel):
+    """Manage a playlist with the following actions:
+    - add: adds a list of tracks to a playlist"""
+    playlist_id: str = Field(description="ID of the playlist to add items to")
+    items: List[str] = Field(description="a list of tracks to add to the playlist`")
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
@@ -103,6 +113,8 @@ async def handle_list_tools() -> list[types.Tool]:
         Search.as_tool(),
         Queue.as_tool(),
         GetInfo.as_tool(),
+        User.as_tool(),
+        Playlist.as_tool(),
     ]
     logger.info(f"Available tools: {[tool.name for tool in tools]}")
     return tools
@@ -204,6 +216,51 @@ async def handle_call_tool(
                         return [types.TextContent(
                             type="text",
                             text=f"Unknown queue action: {action}. Supported actions are: add, remove, and get."
+                        )]
+
+            case "User":
+                logger.info(f"User operation with arguments: {arguments}")
+                action = arguments.get("action")
+
+                match action:
+                    case "get":
+                        user = arguments.get("user")
+                        if not user:
+                            logger.error("user is required for get action.")
+                            return [types.TextContent(
+                                type="text",
+                                text="user is required for get action"
+                            )]
+                        playlists = spotify_client.get_user_playlists(user) 
+                        return [types.TextContent(
+                            type="text",
+                            text=json.dumps(playlists, indent=2)
+                        )]
+
+            case "Playlist":
+                logger.info(f"Playlist operation with arguments: {arguments}")
+                action = arguments.get("action")
+
+                match action:
+                    case "add":
+                        playlist_id = arguments.get("playlist_id")
+                        items = arguments.get("items")
+                        if not playlist_id:
+                            logger.error("playlist_id is required for add action.")
+                            return [types.TextContent(
+                                type="text",
+                                text="playlist_id is required for add action"
+                            )]
+                        spotify_client.playlist_add_items(playlist_id, items)
+                        return [types.TextContent(
+                            type="text",
+                            text=f"Items added to playlist successfully."
+                        )]
+
+                    case _:
+                        return [types.TextContent(
+                            type="text",
+                            text=f"Unknown playlist action: {action}. Supported actions are: add."
                         )]
 
             case "GetInfo":
