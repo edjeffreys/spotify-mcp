@@ -101,6 +101,7 @@ class User(ToolModel):
 class Playlist(ToolModel):
     """Manage a playlist with the following actions:
     - add: adds a list of tracks to a playlist"""
+    action: str = Field(description="Action to perform: 'add'.")
     playlist_id: str = Field(description="ID of the playlist to add items to")
     items: List[str] = Field(description="a list of tracks to add to the playlist`")
 
