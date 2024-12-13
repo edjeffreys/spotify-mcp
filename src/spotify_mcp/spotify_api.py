@@ -65,8 +65,26 @@ class Client:
         Returns list of playlists belonging to user
         - user: username of user
         """
-        results = self.sp.user_playlists(user)
-        return results
+        try:
+            results = self.sp.user_playlists(user)
+            if not results:
+                return {"playlists": []}
+                
+            playlists = []
+            for item in results['items']:
+                playlist = {
+                    "name": item['name'],
+                    "id": item['id'],
+                    "owner": item['owner']['display_name'],
+                    "tracks_total": item['tracks']['total'],
+                    "public": item['public']
+                }
+                playlists.append(playlist)
+                
+            return {"playlists": playlists}
+        except Exception as e:
+            self.logger.error(f"Error getting user playlists: {str(e)}", exc_info=True)
+            raise
 
 
     def get_info(self, item_id: str, qtype: str = 'track') -> dict:
