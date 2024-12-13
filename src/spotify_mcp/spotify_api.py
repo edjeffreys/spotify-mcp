@@ -194,6 +194,26 @@ class Client:
         self.sp.playlist_add_items(playlist_id, formatted_items)
 
     @utils.validate
+    def playlist_remove_items(self, playlist_id: str, items: List[str]):
+        """
+        Removes tracks from a playlist.
+        
+        Args:
+            playlist_id: the id of the playlist
+            items: a list of track ids to remove
+            
+        Raises:
+            SpotifyException: If the API request fails
+        """
+        try:
+            formatted_items = list(map(lambda id: f"spotify:track:{id}", items))
+            self.sp.playlist_remove_all_occurrences_of_items(playlist_id, formatted_items)
+            self.logger.info(f"Successfully removed {len(items)} tracks from playlist {playlist_id}")
+        except Exception as e:
+            self.logger.error(f"Error removing items from playlist: {str(e)}", exc_info=True)
+            raise
+
+    @utils.validate
     def get_queue(self, device=None):
         """Returns the current queue of tracks."""
         queue_info = self.sp.queue()

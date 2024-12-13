@@ -10,6 +10,7 @@ class GetInfo(ToolModel):
     """Get detailed information about a Spotify item (track, album, artist, or playlist)."""
 
     class Schema(ToolModel.Schema):
+        action: str = Field(description="Action to perform: 'get'")
         item_id: str = Field(description="ID of the item to get information about")
         qtype: str = Field(default="track", description="Type of item: 'track', 'album', 'artist', or 'playlist'. "
                                                     "If 'playlist' or 'album', returns its tracks. If 'artist',"
