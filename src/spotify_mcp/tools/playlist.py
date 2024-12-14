@@ -24,7 +24,7 @@ class Playlist(ToolModel):
                 type="text",
                 text="playlist_id is required for add action"
             )]
-        self._spotify_client.playlist_add_items(playlist_id, items)
+        self._spotify.playlists.add_items(playlist_id, items)
         return [types.TextContent(
             type="text",
             text=f"Items added to playlist successfully."
@@ -46,7 +46,7 @@ class Playlist(ToolModel):
                 text="items list is required for remove action"
             )]
             
-        self._spotify_client.playlist_remove_items(playlist_id, items)
+        self._spotify.playlists.remove_items(playlist_id, items)
         return [types.TextContent(
             type="text",
             text=f"Items removed from playlist successfully."

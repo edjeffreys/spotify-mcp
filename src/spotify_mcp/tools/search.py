@@ -18,7 +18,7 @@ class Search(ToolModel):
 
     def search(self, arguments):
         logger.info(f"Performing search with arguments: {arguments}")
-        search_results = self._spotify_client.search(
+        search_results = self._spotify.search.search(
             query=arguments.get("query", ""),
             qtype=arguments.get("qtype", "track"),
             limit=arguments.get("limit", 10)

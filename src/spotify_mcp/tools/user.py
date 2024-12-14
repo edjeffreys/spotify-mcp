@@ -22,7 +22,7 @@ class User(ToolModel):
                 type="text",
                 text="user is required for get action"
             )]
-        playlists = self._spotify_client.get_user_playlists(user) 
+        playlists = self._spotify.playlists.get_user_playlists(user) 
         return [types.TextContent(
             type="text",
             text=json.dumps(playlists, indent=2)

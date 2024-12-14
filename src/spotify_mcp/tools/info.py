@@ -18,7 +18,7 @@ class GetInfo(ToolModel):
 
     def get(self, arguments):
         logger.info(f"Getting item info with arguments: {arguments}")
-        item_info = self._spotify_client.get_info(
+        item_info = self._spotify.search.get_info(
             item_id=arguments.get("item_id"),
             qtype=arguments.get("qtype", "track")
         )

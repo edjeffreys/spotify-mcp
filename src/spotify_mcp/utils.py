@@ -1,17 +1,22 @@
 from collections import defaultdict
-from typing import Optional, Dict
 import functools
-from typing import Callable, TypeVar
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Callable, TypeVar, Tuple, Any, cast, Union
 from urllib.parse import quote
+
+from .spotify.models import (
+    TrackInfo, 
+    ArtistInfo, 
+    PlaylistInfo, 
+    AlbumInfo,
+    QType
+)
 
 T = TypeVar('T')
 
-
-def parse_track(track_item: dict, detailed=False) -> Optional[dict]:
+def parse_track(track_item: Dict[str, Any], detailed: bool = False) -> Optional[TrackInfo]:
     if not track_item:
         return None
-    narrowed_item = {
+    narrowed_item: TrackInfo = {
         'name': track_item['name'],
         'id': track_item['id'],
     }
@@ -22,7 +27,8 @@ def parse_track(track_item: dict, detailed=False) -> Optional[dict]:
     if detailed:
         narrowed_item['album'] = parse_album(track_item.get('album'))
         for k in ['track_number', 'duration_ms']:
-            narrowed_item[k] = track_item.get(k)
+            if k in track_item:
+                narrowed_item[k] = track_item[k]
 
     if not track_item.get('is_playable', True):
         narrowed_item['is_playable'] = False
@@ -32,125 +38,105 @@ def parse_track(track_item: dict, detailed=False) -> Optional[dict]:
         artists = [parse_artist(a) for a in track_item['artists']]
 
     if len(artists) == 1:
-        narrowed_item['artist'] = artists[0]
+        narrowed_item['artist'] = artists[0] if isinstance(artists[0], str) else artists[0]['name']
     else:
         narrowed_item['artists'] = artists
 
     return narrowed_item
 
-
-def parse_artist(artist_item: dict, detailed=False) -> Optional[dict]:
+def parse_artist(artist_item: Dict[str, Any], detailed: bool = False) -> Optional[ArtistInfo]:
     if not artist_item:
         return None
-    narrowed_item = {
+    narrowed_item: ArtistInfo = {
         'name': artist_item['name'],
         'id': artist_item['id'],
+        'genres': artist_item.get('genres', []),
+        'popularity': artist_item.get('popularity', 0),
+        'top_tracks': [],
+        'albums': []
     }
-    if detailed:
-        narrowed_item['genres'] = artist_item.get('genres')
-
+    
     return narrowed_item
 
-
-def parse_playlist(playlist_item: dict, detailed=False) -> Optional[dict]:
+def parse_playlist(playlist_item: Dict[str, Any], detailed: bool = False) -> Optional[PlaylistInfo]:
     if not playlist_item:
         return None
-    narrowed_item = {
+    narrowed_item: PlaylistInfo = {
         'name': playlist_item['name'],
         'id': playlist_item['id'],
-        'owner': playlist_item['owner']['display_name']
+        'owner': playlist_item['owner']['display_name'],
+        'tracks_total': playlist_item['tracks']['total'],
+        'public': playlist_item.get('public', False)
     }
-    if detailed:
-        narrowed_item['description'] = playlist_item.get('description')
-        tracks = []
-        for t in playlist_item['tracks']['items']:
-            tracks.append(parse_track(t['track']))
-        narrowed_item['tracks'] = tracks
-
+    
     return narrowed_item
 
-
-def parse_album(album_item: dict, detailed=False) -> dict:
-    narrowed_item = {
+def parse_album(album_item: Dict[str, Any], detailed: bool = False) -> Optional[AlbumInfo]:
+    if not album_item:
+        return None
+        
+    narrowed_item: AlbumInfo = {
         'name': album_item['name'],
         'id': album_item['id'],
+        'artist': '',  # Will be set below
+        'release_date': album_item.get('release_date', ''),
+        'total_tracks': album_item.get('total_tracks', 0)
     }
 
     artists = [a['name'] for a in album_item['artists']]
-
-    if detailed:
-        tracks = []
-        for t in album_item['tracks']['items']:
-            tracks.append(parse_track(t))
-        narrowed_item["tracks"] = tracks
-        artists = [parse_artist(a) for a in album_item['artists']]
-
-        for k in ['total_tracks', 'release_date', 'genres']:
-            narrowed_item[k] = album_item.get(k)
-
     if len(artists) == 1:
         narrowed_item['artist'] = artists[0]
     else:
-        narrowed_item['artists'] = artists
+        narrowed_item['artist'] = ', '.join(artists)
 
     return narrowed_item
 
-
-def parse_search_results(results: Dict, qtype: str):
-    _results = defaultdict(list)
+def parse_search_results(
+    results: Dict[str, Any], 
+    qtype: Union[QType, str]
+) -> Dict[str, List[Union[TrackInfo, ArtistInfo, PlaylistInfo, AlbumInfo]]]:
+    _results: Dict[str, List[Any]] = defaultdict(list)
 
     for q in qtype.split(","):
         match q:
             case "track":
-                for idx, item in enumerate(results['tracks']['items']):
+                for item in results['tracks']['items']:
                     if not item: continue
-                    _results['tracks'].append(parse_track(item))
+                    if parsed := parse_track(item):
+                        _results['tracks'].append(parsed)
             case "artist":
-                for idx, item in enumerate(results['artists']['items']):
+                for item in results['artists']['items']:
                     if not item: continue
-                    _results['artists'].append(parse_artist(item))
+                    if parsed := parse_artist(item):
+                        _results['artists'].append(parsed)
             case "playlist":
-                for idx, item in enumerate(results['playlists']['items']):
+                for item in results['playlists']['items']:
                     if not item: continue
-                    _results['playlists'].append(parse_playlist(item))
+                    if parsed := parse_playlist(item):
+                        _results['playlists'].append(parsed)
             case "album":
-                for idx, item in enumerate(results['albums']['items']):
+                for item in results['albums']['items']:
                     if not item: continue
-                    _results['albums'].append(parse_album(item))
+                    if parsed := parse_album(item):
+                        _results['albums'].append(parsed)
             case _:
-                raise ValueError(f"uknown qtype {qtype}")
+                raise ValueError(f"unknown qtype {qtype}")
 
     return dict(_results)
 
-
-def build_search_query(base_query: str,
-                       artist: Optional[str] = None,
-                       track: Optional[str] = None,
-                       album: Optional[str] = None,
-                       year: Optional[str] = None,
-                       year_range: Optional[tuple[int, int]] = None,
-                       # upc: Optional[str] = None,
-                       # isrc: Optional[str] = None,
-                       genre: Optional[str] = None,
-                       is_hipster: bool = False,
-                       is_new: bool = False
-                       ) -> str:
+def build_search_query(
+    base_query: str,
+    artist: Optional[str] = None,
+    track: Optional[str] = None,
+    album: Optional[str] = None,
+    year: Optional[str] = None,
+    year_range: Optional[Tuple[int, int]] = None,
+    genre: Optional[str] = None,
+    is_hipster: bool = False,
+    is_new: bool = False
+) -> str:
     """
     Build a search query string with optional filters.
-
-    Args:
-        base_query: Base search term
-        artist: Artist name filter
-        track: Track name filter
-        album: Album name filter
-        year: Specific year filter
-        year_range: Tuple of (start_year, end_year) for year range filter
-        genre: Genre filter
-        is_hipster: Filter for lowest 10% popularity albums
-        is_new: Filter for albums released in past two weeks
-
-    Returns:
-        Encoded query string with applied filters
     """
     filters = []
 
@@ -174,21 +160,14 @@ def build_search_query(base_query: str,
     query_parts = [base_query] + filters
     return quote(" ".join(query_parts))
 
-
 def validate(func: Callable[..., T]) -> Callable[..., T]:
     """
-    Decorator for Spotify API methods that handles authentication and device validation.
-    - Checks and refreshes authentication if needed
-    - Validates active device and retries with candidate device if needed
+    Decorator for Spotify API methods that handles authentication validation.
     """
-
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        # Handle authentication
-        if not self.auth_ok():
-            self.auth_refresh()
-
-        # Handle device validation
+        # Handle authentication via the client
+        if not self.client.auth_ok():
+            self.client.auth_refresh()
         return func(self, *args, **kwargs)
-
     return wrapper

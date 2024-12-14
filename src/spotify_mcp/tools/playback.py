@@ -22,7 +22,7 @@ class Playback(ToolModel):
 
     def get(self, arguments):
         logger.info("Attempting to get current track")
-        curr_track = self._spotify_client.get_current_track()
+        curr_track = self._spotify.playback.get_current_track()
         if curr_track:
             logger.info(f"Current track retrieved: {curr_track.get('name', 'Unknown')}")
             return [types.TextContent(
@@ -37,7 +37,7 @@ class Playback(ToolModel):
 
     def start(self, arguments):
         logger.info(f"Starting playback with arguments: {arguments}")
-        self._spotify_client.start_playback(track_id=arguments.get("track_id"))
+        self._spotify.playback.start_playback(track_id=arguments.get("track_id"))
         logger.info("Playback started successfully")
         return [types.TextContent(
             type="text",
@@ -46,7 +46,7 @@ class Playback(ToolModel):
 
     def pause(self, arguments):
         logger.info("Attempting to pause playback")
-        self._spotify_client.pause_playback()
+        self._spotify.playback.pause_playback()
         logger.info("Playback paused successfully")
         return [types.TextContent(
             type="text",
@@ -56,7 +56,7 @@ class Playback(ToolModel):
     def skip(self, arguments):
         num_skips = int(arguments.get("num_skips", 1))
         logger.info(f"Skipping {num_skips} tracks.")
-        self._spotify_client.skip_track(n=num_skips)
+        self._spotify.playback.skip_track(n=num_skips)
         return [types.TextContent(
             type="text",
             text="Skipped to next track."

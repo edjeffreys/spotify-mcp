@@ -4,21 +4,21 @@ from mcp.server import Server, logger, stdio_server
 import mcp.types as types
 from spotipy import SpotifyException
 
-from . import spotify_api
+from .spotify import Spotify
 from .tools import GetInfo, Playback, Playlist, Queue, Search, User
 from .tools.tool_model import ToolModel
 
 server = Server("spotify-mcp")
-spotify_client = spotify_api.Client(logger)
+spotify = Spotify(logger=logger)
 
 
 mcp_tools: List[ToolModel] = [
-    GetInfo(spotify_client),
-    Playback(spotify_client), 
-    Playlist(spotify_client),
-    Queue(spotify_client),
-    Search(spotify_client),
-    User(spotify_client),
+    GetInfo(spotify),
+    Playback(spotify), 
+    Playlist(spotify),
+    Queue(spotify),
+    Search(spotify),
+    User(spotify),
 ]
 
 @server.list_tools()

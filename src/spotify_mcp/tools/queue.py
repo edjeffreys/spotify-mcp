@@ -22,14 +22,14 @@ class Queue(ToolModel):
                 type="text",
                 text="track_id is required for add action"
             )]
-        self._spotify_client.add_to_queue(track_id)
+        self._spotify.playback.add_to_queue(track_id)
         return [types.TextContent(
             type="text",
             text=f"Track added to queue successfully."
         )]
 
     def get(self, arguments):
-        queue = self._spotify_client.get_queue()
+        queue = self._spotify.playback.get_queue()
         return [types.TextContent(
             type="text",
             text=json.dumps(queue, indent=2)
